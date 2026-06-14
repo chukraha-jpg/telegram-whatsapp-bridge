@@ -5,7 +5,8 @@ import fetch from 'node-fetch';
 import sharp from 'sharp';
 import qr from 'qrcode-terminal';
 import { Telegraf } from 'telegraf';
-import { Client, LocalAuth, MessageMedia } from 'whatsapp-web.js';
+import pkg from 'whatsapp-web.js';
+const { Client, LocalAuth, MessageMedia } = pkg;
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
