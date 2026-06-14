@@ -37,6 +37,8 @@ const bot = new Telegraf(TELEGRAM_TOKEN);
 const waClient = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
+    headless: true,
+    executablePath: '/opt/render/.cache/puppeteer/chrome/linux-146.0.7680.31/chrome-linux64/chrome',
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   }
 });
