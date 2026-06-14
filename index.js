@@ -183,3 +183,5 @@ bot.on('photo', async (ctx) => {
 bot.launch();
 waClient.initialize();
 console.log('Telegram bot launched');
+
+
