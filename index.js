@@ -78,12 +78,20 @@ waClient.on('ready', async () => {
   console.log('WhatsApp client ready');
   latestQrDataUrl = '';
 
-  const chats = await waClient.getChats();
+    const chats = await waClient.getChats();
+
+  const groupNames = chats
+    .filter(c => c.isGroup && c.name)
+    .map(c => c.name);
+
+  console.log('WhatsApp groups visible to this account:', groupNames);
+
   const group = chats.find(c =>
-  c.isGroup &&
-  c.name &&
-  c.name.trim().toLowerCase().includes(GROUP_NAME.trim().toLowerCase())
-);
+    c.isGroup &&
+    c.name &&
+    c.name.trim().toLowerCase().includes(GROUP_NAME.trim().toLowerCase())
+  );
+
   if (!group) {
     console.error('WhatsApp group not found. Check GROUP_NAME.');
     await notifyAdmin(`❌ WhatsApp group not found: ${GROUP_NAME}`);
