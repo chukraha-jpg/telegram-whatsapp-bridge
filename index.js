@@ -204,4 +204,38 @@ bot.on('photo', async (ctx) => {
         : '✅ Photo sent to WhatsApp group'
     );
   } catch (e) {
-    console.error
+        console.error(e);
+    await ctx.reply('❌ Failed to send photo');
+  }
+});
+
+bot.launch();
+waClient.initialize();
+console.log('Telegram bot launched');
+
+const port = process.env.PORT || 10000;
+
+http.createServer((req, res) => {
+  if (latestQrDataUrl) {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(`
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>WhatsApp QR</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+          <h2>Scan WhatsApp QR</h2>
+          <p>Open WhatsApp > Linked Devices > Link a Device</p>
+          <img src="${latestQrDataUrl}" alt="WhatsApp QR Code" style="max-width: 320px; width: 100%;" />
+        </body>
+      </html>
+    `);
+    return;
+  }
+
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('OK');
+}).listen(port, '0.0.0.0', () => {
+  console.log(`HTTP server listening on ${port}`);
+});
