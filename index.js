@@ -41,7 +41,7 @@ const waClient = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
     headless: true,
-    executablePath: '/opt/render/project/src/.cache/puppeteer/chrome/linux-146.0.7680.31/chrome-linux64/chrome',
+    executablePath: '/opt/render/project/src/.cache/puppeteer/chrome/linux-149.0.7827.22/chrome-linux64/chrome',
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   }
 });
@@ -80,6 +80,7 @@ waClient.on('ready', async () => {
 
   const chats = await waClient.getChats();
   const group = chats.find(c => c.isGroup && c.name && c.name.includes(GROUP_NAME));
+
   if (!group) {
     console.error('WhatsApp group not found. Check GROUP_NAME.');
     await notifyAdmin(`❌ WhatsApp group not found: ${GROUP_NAME}`);
@@ -114,7 +115,11 @@ function ensureReady(ctx) {
 async function fetchTelegramFileBuffer(fileId) {
   const link = await bot.telegram.getFileLink(fileId);
   const response = await fetch(link.href);
-  if (!response.ok) throw new Error(`Failed to fetch Telegram file: ${response.status}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Telegram file: ${response.status}`);
+  }
+
   return Buffer.from(await response.arrayBuffer());
 }
 
@@ -148,6 +153,7 @@ async function sendImageToWhatsApp(imageBuffer, caption = '') {
   const processed = await blurRegion(imageBuffer);
   const base64 = processed.toString('base64');
   const media = new MessageMedia('image/jpeg', base64, 'photo.jpg');
+
   await sleep(randomDelay());
   await waClient.sendMessage(WHATSAPP_GROUP_ID, media, { caption });
 }
@@ -204,38 +210,4 @@ bot.on('photo', async (ctx) => {
         : '✅ Photo sent to WhatsApp group'
     );
   } catch (e) {
-    console.error(e);
-    await ctx.reply('❌ Failed to send photo');
-  }
-});
-
-bot.launch();
-waClient.initialize();
-console.log('Telegram bot launched');
-
-const port = process.env.PORT || 10000;
-
-http.createServer((req, res) => {
-  if (latestQrDataUrl) {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(`
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>WhatsApp QR</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
-          <h2>Scan WhatsApp QR</h2>
-          <p>Open WhatsApp > Linked Devices > Link a Device</p>
-          <img src="${latestQrDataUrl}" alt="WhatsApp QR Code" style="max-width: 320px; width: 100%;" />
-        </body>
-      </html>
-    `);
-    return;
-  }
-
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('OK');
-}).listen(port, '0.0.0.0', () => {
-  console.log(`HTTP server listening on ${port}`);
-});
+    console.error
