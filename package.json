@@ -7,11 +7,12 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "dotenv": "...",
-    "node-fetch": "...",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2",
     "qrcode": "^1.5.4",
-    "sharp": "...",
-    "telegraf": "...",
-    "whatsapp-web.js": "..."
+    "qrcode-terminal": "^0.12.0",
+    "sharp": "^0.33.5",
+    "telegraf": "^4.16.3",
+    "whatsapp-web.js": "^1.26.0"
   }
 }
