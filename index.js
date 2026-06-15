@@ -79,8 +79,11 @@ waClient.on('ready', async () => {
   latestQrDataUrl = '';
 
   const chats = await waClient.getChats();
-  const group = chats.find(c => c.isGroup && c.name && c.name.includes(GROUP_NAME));
-
+  const group = chats.find(c =>
+  c.isGroup &&
+  c.name &&
+  c.name.trim().toLowerCase().includes(GROUP_NAME.trim().toLowerCase())
+);
   if (!group) {
     console.error('WhatsApp group not found. Check GROUP_NAME.');
     await notifyAdmin(`❌ WhatsApp group not found: ${GROUP_NAME}`);
