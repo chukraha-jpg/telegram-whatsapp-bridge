@@ -7,9 +7,10 @@ import qr from 'qrcode-terminal';
 import QRCode from 'qrcode';
 import { Telegraf } from 'telegraf';
 import pkg from 'whatsapp-web.js';
-const { Client, LocalAuth, MessageMedia } = pkg;
 import http from 'http';
 import { fileURLToPath } from 'url';
+
+const { Client, LocalAuth, MessageMedia } = pkg;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +38,7 @@ let WHATSAPP_GROUP_ID = '';
 let latestQrDataUrl = '';
 
 const bot = new Telegraf(TELEGRAM_TOKEN);
+
 const waClient = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
@@ -50,7 +52,7 @@ function randomDelay() {
   return Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
 }
 
-async function sleep(ms) {
+function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -74,33 +76,44 @@ waClient.on('qr', async (qrCode) => {
   }
 });
 
+waClient.on('authenticated', async () => {
+  console.log('WhatsApp authenticated');
+  await notifyAdmin('ℹ️ WhatsApp authenticated');
+});
+
 waClient.on('ready', async () => {
   console.log('WhatsApp client ready');
   latestQrDataUrl = '';
 
+  try {
     const chats = await waClient.getChats();
 
-  const groupNames = chats
-    .filter(c => c.isGroup && c.name)
-    .map(c => c.name);
+    const groupNames = chats
+      .filter(c => c.isGroup && c.name)
+      .map(c => c.name);
 
-  console.log('WhatsApp groups visible to this account:', groupNames);
+    console.log('WhatsApp groups visible to this account:', groupNames);
+    await notifyAdmin(`ℹ️ Visible WhatsApp groups: ${groupNames.join(' | ') || 'none'}`);
 
-  const group = chats.find(c =>
-    c.isGroup &&
-    c.name &&
-    c.name.trim().toLowerCase().includes(GROUP_NAME.trim().toLowerCase())
-  );
+    const group = chats.find(c =>
+      c.isGroup &&
+      c.name &&
+      c.name.trim().toLowerCase().includes(GROUP_NAME.trim().toLowerCase())
+    );
 
-  if (!group) {
-    console.error('WhatsApp group not found. Check GROUP_NAME.');
-    await notifyAdmin(`❌ WhatsApp group not found: ${GROUP_NAME}`);
-    return;
+    if (!group) {
+      console.error('WhatsApp group not found. Check GROUP_NAME.');
+      await notifyAdmin(`❌ WhatsApp group not found: ${GROUP_NAME}`);
+      return;
+    }
+
+    WHATSAPP_GROUP_ID = group.id._serialized;
+    console.log('Connected group ID:', WHATSAPP_GROUP_ID);
+    await notifyAdmin(`✅ Bridge ready. WhatsApp group connected: ${GROUP_NAME}`);
+  } catch (e) {
+    console.error('Error during WhatsApp ready handler:', e);
+    await notifyAdmin(`❌ Error during WhatsApp ready handler: ${e.message}`);
   }
-
-  WHATSAPP_GROUP_ID = group.id._serialized;
-  console.log('Connected group ID:', WHATSAPP_GROUP_ID);
-  await notifyAdmin(`✅ Bridge ready. WhatsApp group connected: ${GROUP_NAME}`);
 });
 
 waClient.on('auth_failure', async (msg) => {
@@ -139,8 +152,9 @@ async function blurRegion(inputBuffer) {
 
   const base = sharp(inputBuffer);
   const meta = await base.metadata();
-  const x = Math.max(0, Math.min(BLUR_X, (meta.width || 0) - 1));
-  const y = Math.max(0, Math.min(BLUR_Y, (meta.height || 0) - 1));
+
+  const x = Math.max(0, Math.min(BLUR_X, (meta.width || 1) - 1));
+  const y = Math.max(0, Math.min(BLUR_Y, (meta.height || 1) - 1));
   const w = Math.max(1, Math.min(BLUR_WIDTH, (meta.width || 1) - x));
   const h = Math.max(1, Math.min(BLUR_HEIGHT, (meta.height || 1) - y));
 
@@ -194,7 +208,7 @@ bot.on('text', async (ctx) => {
     await sendTextToWhatsApp(ctx.message.text);
     await ctx.reply('✅ Text sent to WhatsApp group');
   } catch (e) {
-    console.error(e);
+    console.error('Send text error:', e);
     await ctx.reply('❌ Failed to send text');
   }
 });
@@ -209,13 +223,14 @@ bot.on('photo', async (ctx) => {
     const buffer = await fetchTelegramFileBuffer(bestPhoto.file_id);
 
     await sendImageToWhatsApp(buffer, caption);
+
     await ctx.reply(
       caption
         ? '✅ Photo with caption sent to WhatsApp group'
         : '✅ Photo sent to WhatsApp group'
     );
   } catch (e) {
-        console.error(e);
+    console.error('Send photo error:', e);
     await ctx.reply('❌ Failed to send photo');
   }
 });
