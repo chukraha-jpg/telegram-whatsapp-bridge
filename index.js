@@ -7,7 +7,7 @@ import qr from 'qrcode-terminal';
 import { Telegraf } from 'telegraf';
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth, MessageMedia } = pkg;
-import { fileURLToPath } from 'url';
+import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -186,5 +186,12 @@ bot.on('photo', async (ctx) => {
 bot.launch();
 waClient.initialize();
 console.log('Telegram bot launched');
+const port = process.env.PORT || 10000;
 
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('OK');
+}).listen(port, '0.0.0.0', () => {
+  console.log(`HTTP server listening on ${port}`);
+});
 
