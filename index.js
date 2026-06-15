@@ -159,19 +159,13 @@ async function sendImageToWhatsApp(imageBuffer, caption = '') {
 }
 
 bot.start((ctx) => {
-  ctx.reply(
-    'Bridge ready command list:
+  ctx.reply(`Bridge ready command list:
 
-' +
-    '1) Send normal text -> goes to WhatsApp group
-' +
-    '2) Send photo with caption -> goes to WhatsApp group with caption
-' +
-    '3) Send photo without caption -> goes to WhatsApp group photo only
+1) Send normal text -> goes to WhatsApp group
+2) Send photo with caption -> goes to WhatsApp group with caption
+3) Send photo without caption -> goes to WhatsApp group photo only
 
-' +
-    'Important: blur area is fixed in code using env variables BLUR_X, BLUR_Y, BLUR_WIDTH, BLUR_HEIGHT.'
-  );
+Important: blur area is fixed in code using env variables BLUR_X, BLUR_Y, BLUR_WIDTH, BLUR_HEIGHT.`);
 });
 
 bot.command('status', async (ctx) => {
