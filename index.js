@@ -17,6 +17,23 @@ const __dirname = path.dirname(__filename);
 const tempDir = path.join(__dirname, 'temp');
 if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
+const authDir = path.join(__dirname, '.wwebjs_auth');
+const cacheDir = path.join(__dirname, '.wwebjs_cache');
+
+try {
+  if (fs.existsSync(authDir)) {
+    fs.rmSync(authDir, { recursive: true, force: true });
+    console.log('Deleted .wwebjs_auth');
+  }
+
+  if (fs.existsSync(cacheDir)) {
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+    console.log('Deleted .wwebjs_cache');
+  }
+} catch (err) {
+  console.error('Cleanup error:', err);
+}
+
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const GROUP_NAME = process.env.GROUP_NAME || 'Dosti Deals';
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || '';
