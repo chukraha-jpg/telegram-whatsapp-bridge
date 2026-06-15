@@ -4,6 +4,7 @@ import path from 'path';
 import fetch from 'node-fetch';
 import sharp from 'sharp';
 import qr from 'qrcode-terminal';
+import QRCode from 'qrcode';
 import { Telegraf } from 'telegraf';
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth, MessageMedia } = pkg;
@@ -33,6 +34,7 @@ if (!TELEGRAM_TOKEN) {
 }
 
 let WHATSAPP_GROUP_ID = '';
+let latestQrDataUrl = '';
 
 const bot = new Telegraf(TELEGRAM_TOKEN);
 const waClient = new Client({
@@ -61,13 +63,21 @@ async function notifyAdmin(text) {
   }
 }
 
-waClient.on('qr', (qrCode) => {
+waClient.on('qr', async (qrCode) => {
   console.log('Scan this WhatsApp QR from Linked Devices:');
   qr.generate(qrCode, { small: true });
+
+  try {
+    latestQrDataUrl = await QRCode.toDataURL(qrCode);
+  } catch (e) {
+    console.error('Failed to create QR image:', e.message);
+  }
 });
 
 waClient.on('ready', async () => {
   console.log('WhatsApp client ready');
+  latestQrDataUrl = '';
+
   const chats = await waClient.getChats();
   const group = chats.find(c => c.isGroup && c.name && c.name.includes(GROUP_NAME));
   if (!group) {
@@ -75,6 +85,7 @@ waClient.on('ready', async () => {
     await notifyAdmin(`❌ WhatsApp group not found: ${GROUP_NAME}`);
     return;
   }
+
   WHATSAPP_GROUP_ID = group.id._serialized;
   console.log('Connected group ID:', WHATSAPP_GROUP_ID);
   await notifyAdmin(`✅ Bridge ready. WhatsApp group connected: ${GROUP_NAME}`);
@@ -87,6 +98,8 @@ waClient.on('auth_failure', async (msg) => {
 
 waClient.on('disconnected', async (reason) => {
   console.error('WhatsApp disconnected:', reason);
+  WHATSAPP_GROUP_ID = '';
+  latestQrDataUrl = '';
   await notifyAdmin(`⚠️ WhatsApp disconnected: ${reason}`);
 });
 
@@ -107,6 +120,7 @@ async function fetchTelegramFileBuffer(fileId) {
 
 async function blurRegion(inputBuffer) {
   if (!BLUR_ENABLED) return inputBuffer;
+
   const base = sharp(inputBuffer);
   const meta = await base.metadata();
   const x = Math.max(0, Math.min(BLUR_X, (meta.width || 0) - 1));
@@ -140,26 +154,31 @@ async function sendImageToWhatsApp(imageBuffer, caption = '') {
 
 bot.start((ctx) => {
   ctx.reply(
-    'Bridge ready command list:\
-\
+    'Bridge ready command list:
+
 ' +
-    '1) Send normal text -> goes to WhatsApp group\
+    '1) Send normal text -> goes to WhatsApp group
 ' +
-    '2) Send photo with caption -> goes to WhatsApp group with caption\
+    '2) Send photo with caption -> goes to WhatsApp group with caption
 ' +
-    '3) Send photo without caption -> goes to WhatsApp group photo only\
-\
+    '3) Send photo without caption -> goes to WhatsApp group photo only
+
 ' +
     'Important: blur area is fixed in code using env variables BLUR_X, BLUR_Y, BLUR_WIDTH, BLUR_HEIGHT.'
   );
 });
 
 bot.command('status', async (ctx) => {
-  await ctx.reply(WHATSAPP_GROUP_ID ? `✅ Connected to WhatsApp group: ${GROUP_NAME}` : '⚠️ WhatsApp not connected yet');
+  await ctx.reply(
+    WHATSAPP_GROUP_ID
+      ? `✅ Connected to WhatsApp group: ${GROUP_NAME}`
+      : '⚠️ WhatsApp not connected yet'
+  );
 });
 
 bot.on('text', async (ctx) => {
   if (!ensureReady(ctx)) return;
+
   try {
     await sendTextToWhatsApp(ctx.message.text);
     await ctx.reply('✅ Text sent to WhatsApp group');
@@ -171,13 +190,19 @@ bot.on('text', async (ctx) => {
 
 bot.on('photo', async (ctx) => {
   if (!ensureReady(ctx)) return;
+
   try {
     const photos = ctx.message.photo;
     const bestPhoto = photos[photos.length - 1];
     const caption = ctx.message.caption || '';
     const buffer = await fetchTelegramFileBuffer(bestPhoto.file_id);
+
     await sendImageToWhatsApp(buffer, caption);
-    await ctx.reply(caption ? '✅ Photo with caption sent to WhatsApp group' : '✅ Photo sent to WhatsApp group');
+    await ctx.reply(
+      caption
+        ? '✅ Photo with caption sent to WhatsApp group'
+        : '✅ Photo sent to WhatsApp group'
+    );
   } catch (e) {
     console.error(e);
     await ctx.reply('❌ Failed to send photo');
@@ -187,12 +212,30 @@ bot.on('photo', async (ctx) => {
 bot.launch();
 waClient.initialize();
 console.log('Telegram bot launched');
+
 const port = process.env.PORT || 10000;
 
 http.createServer((req, res) => {
+  if (latestQrDataUrl) {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(`
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>WhatsApp QR</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+          <h2>Scan WhatsApp QR</h2>
+          <p>Open WhatsApp > Linked Devices > Link a Device</p>
+          <img src="${latestQrDataUrl}" alt="WhatsApp QR Code" style="max-width: 320px; width: 100%;" />
+        </body>
+      </html>
+    `);
+    return;
+  }
+
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('OK');
 }).listen(port, '0.0.0.0', () => {
   console.log(`HTTP server listening on ${port}`);
 });
-
